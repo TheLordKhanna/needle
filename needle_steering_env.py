@@ -25,13 +25,13 @@ class NeedleSteeringEnv(gym.Env):
         super().__init__()
         self.np_random = np.random.RandomState(seed)
 
-        # Physical constants (in meters)
+        
         self.max_curvature = 10.44
         self.max_step_length = 0.005
         self.collision_rad = 0.005
         self.min_arc_length = 0.00  
 
-        # Reward parameters
+        
         self.kappa_star = float(np.clip(curvature_fraction, 0, 1)) * self.max_curvature
         self.alpha = float(alpha)
         self.eta = float(eta)
@@ -45,16 +45,13 @@ class NeedleSteeringEnv(gym.Env):
         self.render_mode = render_mode
         self.inside_scale = float(inside_scale)
 
-        # Curriculum Learning and Evaluation Setup
         self.evaluation_mode = evaluation_mode
         self.episode_counter = 0
         self.curriculum_schedule = [
-            (500, 0.007),  # Episodes 1-500: 7mm target radius
-            (1500, 0.004), # Episodes 501-1000: 4mm target radius
-                           # Episodes 1001+: 2mm target radius
+            (500, 0.007),  
+            (1500, 0.004), 
         ]
 
-        # Action & observation spaces
         self.action_space = spaces.Box(
             low=np.array([0.0, 0.0, -np.pi], dtype=np.float32),
             high=np.array([self.max_step_length, 1.0, np.pi], dtype=np.float32),
@@ -75,7 +72,6 @@ class NeedleSteeringEnv(gym.Env):
         if seed is not None:
             self.np_random.seed(seed)
 
-        # --- CURRICULUM & EVALUATION LOGIC ---
         if not self.evaluation_mode:
             # Training mode: use the curriculum
             self.episode_counter += 1
@@ -92,9 +88,9 @@ class NeedleSteeringEnv(gym.Env):
             if self.episode_counter == self.curriculum_schedule[1][0]:
                 print(f"\n--- Episode {self.episode_counter}: Curriculum Change -> Target Radius set to {self.target_radius*1000:.0f}mm ---\n")
         else:
-            # Evaluation mode: always use the hardest difficulty
+            
             self.target_radius = 0.003
-        # ------------------------------------
+    
 
         self.pos = np.array([0.065, 0.06, 0.007], dtype=np.float32)
         self.orientation = np.array([1.0, 0.0, 0.5], dtype=np.float32)
@@ -150,9 +146,7 @@ class NeedleSteeringEnv(gym.Env):
             self.current_arc_length += length
         else:
             steer_flag = 0.0
-        # ---------------------------------------
-        #print(f"Step: {self.steps+1} | Agent wants steer: {agent_wants_to_steer} | Sticky Mode: {self.steering_in_progress} | Enforced Steer: {steer_flag} | Arc Len: {self.current_arc_length:.4f}")
-
+       
         reward = 0.0 * length
         self.path_length += length
 
@@ -199,7 +193,6 @@ class NeedleSteeringEnv(gym.Env):
 
         if success:
             reward += 20000.0
-            reward += 300.0
             reward -= self.length_cost * self.path_length
             rem = max(self.max_steps - (self.steps + 1), 0)
             reward += 100.0 * (rem / self.max_steps)
@@ -287,3 +280,4 @@ class NeedleSteeringEnv(gym.Env):
 
 
         return points, new_ori
+
