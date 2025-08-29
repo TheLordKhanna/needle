@@ -1,4 +1,4 @@
-# network.py
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -56,3 +56,4 @@ class Critic(nn.Module):
     def forward(self, obs, act):
         x = torch.cat([obs, act], dim=-1)
         return self.q1(x), self.q2(x)
+
