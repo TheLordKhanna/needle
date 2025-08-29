@@ -1,15 +1,4 @@
-# test_sac.py  ──────────────────────────────────────────────────────────────
-#
-# Roll out a single trajectory with a trained SAC policy in the
-# fixed-curvature NeedleSteeringEnv.
-#
-# Requirements:
-#   • needle_steering_env.py   (updated version with steer_flag)
-#   • agent.py                 (your SAC implementation)
-#   • sac_actor.pth            (weights trained with 3-D action space)
-#   • PyTorch, Gymnasium, NumPy, Matplotlib
-#
-# ───────────────────────────────────────────────────────────────────────────
+
 
 import time
 import torch
@@ -17,14 +6,11 @@ from agent import SACAgent
 from needle_steering_env import NeedleSteeringEnv
 
 
-# ─────────────────────────  environment  ────────────────────────────────
 env = NeedleSteeringEnv(render_mode="human")
 obs, _ = env.reset()
 
-obs_dim = env.observation_space.shape[0]     # 9
-act_dim = env.action_space.shape[0]          # 3  (len, steer_flag, plane)
-
-# ─────────────────────────  SAC actor  ──────────────────────────────────
+obs_dim = env.observation_space.shape[0]     
+act_dim = env.action_space.shape[0]         
 agent = SACAgent(obs_dim, act_dim,
                  env.action_space.low,
                  env.action_space.high)
@@ -34,7 +20,6 @@ agent.actor.load_state_dict(
 )
 agent.actor.eval()
 
-# ─────────────────────────  rollout  ────────────────────────────────────
 total_reward = 0.0
 terminated    = False
 
@@ -43,7 +28,7 @@ print("─────┼───────────┼──────�
 
 while not terminated:
     # select deterministic action
-    action = agent.select_action(obs, eval_mode=True)   # → np.ndarray, shape (3,)
+    action = agent.select_action(obs, eval_mode=True)  
 
     # unpack three components
     length, steer_flag, plane = action
@@ -62,3 +47,4 @@ print("\nTOTAL REWARD:", f"{total_reward:.2f}")
 
 input("Press Enter to close the window…")
 env.close()
+
