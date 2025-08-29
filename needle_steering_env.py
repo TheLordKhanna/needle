@@ -4,11 +4,6 @@ import gymnasium as gym
 from gymnasium import spaces
 
 class NeedleSteeringEnv(gym.Env):
-    r"""
-    3-D bevel-tip needle-steering environment for a liver navigation task.
-    Final Version (V8): Implements curriculum learning, evaluation mode,
-    and "sticky steering" to enforce a minimum turning arc length.
-    """
 
     metadata = {"render_modes": ["human"], "render_fps": 30}
 
@@ -34,7 +29,7 @@ class NeedleSteeringEnv(gym.Env):
         self.max_curvature = 10.44
         self.max_step_length = 0.005
         self.collision_rad = 0.005
-        self.min_arc_length = 0.00  # Enforce 2cm minimum steering arc
+        self.min_arc_length = 0.00  
 
         # Reward parameters
         self.kappa_star = float(np.clip(curvature_fraction, 0, 1)) * self.max_curvature
@@ -44,7 +39,7 @@ class NeedleSteeringEnv(gym.Env):
         self.dist_w = float(distance_weight)
         self.length_cost = float(length_cost)
         self.switch_dist = float(switch_dist)
-        self.target_radius = 0.003 # Default to hardest, will be overridden by curriculum
+        self.target_radius = 0.003 
         self.time_penalty = 0.0
         self.straight_bonus = 10.0
         self.render_mode = render_mode
@@ -289,5 +284,6 @@ class NeedleSteeringEnv(gym.Env):
         Rbend_f = np.eye(3) + np.sin(theta) * K + (1 - np.cos(theta)) * (K @ K)
         new_ori = Rbend_f @ self.orientation
         new_ori /= np.linalg.norm(new_ori)
+
 
         return points, new_ori
