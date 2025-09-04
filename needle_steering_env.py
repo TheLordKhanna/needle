@@ -169,7 +169,7 @@ class NeedleSteeringEnv(gym.Env):
         
         
         
-        return self._get_obs(), {}
+        return self.get_obs(), {}
 
 
     #main step function, taking the action vector and returning reward
@@ -184,7 +184,7 @@ class NeedleSteeringEnv(gym.Env):
 
 
         #key movement function - see below
-        points, new_ori = self._move_segment(length, plane,
+        points, new_ori = self.move_segment(length, plane,
             self.kappa_star if steer_flag else 0.0)
         
 
@@ -249,7 +249,7 @@ class NeedleSteeringEnv(gym.Env):
 
         #main penalty- collision with obstacles. in reality the code can work with only this penalty, 
         # but I have added the other smaller penalties to guide learning to an extent
-        collided = self._is_collision(prev_pt)
+        collided = self.is_collision(prev_pt)
         if collided:
             reward -= 50.0
 
@@ -270,7 +270,7 @@ class NeedleSteeringEnv(gym.Env):
         self.steps += 1
 
         done = success or collided or (self.steps >= self.max_steps)
-        return self._get_obs(), float(reward), done, self.steps >= self.max_steps, {}
+        return self.get_obs(), float(reward), done, self.steps >= self.max_steps, {}
 
     def render(self):
         if self.render_mode != "human": return
@@ -302,20 +302,20 @@ class NeedleSteeringEnv(gym.Env):
             plt.close(self._fig)
             del self._fig
 
-    def _get_obs(self):
+    def get_obs(self):
         return np.concatenate([self.pos, self.orientation, self.target]).astype(np.float32)
 
-    def _is_collision(self, point):
+    def is_collision(self, point):
         return any(np.linalg.norm(point - o) < self.collision_rad for o in self.obstacles)
 
-    def _rotate_about_local_z(self, angle):
+    def rotate_about_local_z(self, angle):
         z = self.orientation / (np.linalg.norm(self.orientation) + 1e-8)
         Kz = np.array([[0, -z[2], z[1]],
                        [z[2], 0, -z[0]],
                        [-z[1], z[0], 0]])
         return np.eye(3) + np.sin(angle) * Kz + (1 - np.cos(angle)) * (Kz @ Kz)
 
-    def _move_segment(self, length, plane_angle, kappa):
+    def move_segment(self, length, plane_angle, kappa):
         
         
         #if the curvature is 0, then we will move in a straight line, simply position + direction*length
@@ -338,7 +338,7 @@ class NeedleSteeringEnv(gym.Env):
 
         #the perp vector is now rotated around the needle axis by plane_angle. this will align the bending direction with the agents choice. the final perp
         #is pointing from the needle position toward the circle centre.
-        perp = self._rotate_about_local_z(plane_angle) @ perp
+        perp = self.rotate_about_local_z(plane_angle) @ perp
 
 
         #radius of the circle
@@ -393,6 +393,9 @@ class NeedleSteeringEnv(gym.Env):
         new_ori /= np.linalg.norm(new_ori)
 
         return points, new_ori
+
+
+
 
 
 
