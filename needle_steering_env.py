@@ -166,9 +166,9 @@ class NeedleSteeringEnv(gym.Env):
         length, sf, plane = action
         length = float(np.clip(length, 1e-5, self.max_step_length))
         plane = float(np.clip(plane, -np.pi, np.pi))
-
+        steer_flag = 1.0 if sf >= 0.5 else 0.0
         agent_wants_to_steer = (sf >= 0.5)
-
+        
        
         reward = 0.0 * length
         self.path_length += length
@@ -303,6 +303,7 @@ class NeedleSteeringEnv(gym.Env):
 
 
         return points, new_ori
+
 
 
 
