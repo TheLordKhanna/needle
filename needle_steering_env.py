@@ -127,18 +127,27 @@ class NeedleSteeringEnv(gym.Env):
             
             self.target_radius = 0.003
     
-
+        #position, normalissed orientation, target 
         self.pos = np.array([0.065, 0.06, 0.007], dtype=np.float32)
         self.orientation = np.array([1.0, 0.0, 0.5], dtype=np.float32)
         self.orientation /= np.linalg.norm(self.orientation)
         self.target = np.array([0.16, 0.09, 0.06], dtype=np.float32)
 
         self.steps = 0
+
+        #max steps in one episode 
         self.max_steps = 200
+
+        #track path length - initialise at 0
         self.path_length = 0.0
+
         self.trajectory = [self.pos.copy()]
+
         self.prev_plane = 0.0
 
+
+
+        #define all obstacles
         self.obstacles = [
             np.array([0.12, 0.075, 0.04], dtype=np.float32),
             np.array([0.12, 0.08, 0.04], dtype=np.float32),
@@ -271,36 +280,81 @@ class NeedleSteeringEnv(gym.Env):
         return np.eye(3) + np.sin(angle) * Kz + (1 - np.cos(angle)) * (Kz @ Kz)
 
     def _move_segment(self, length, plane_angle, kappa):
+        
+        
+        #if the curvature is 0, then we will move in a straight line, simply position + direction*length
         if kappa < 1e-4:
             end = self.pos + self.orientation * length
             return [end], self.orientation.copy()
 
+
+        #for curved motion, this curved arc is part of a circle - and we will define it as such
+
+
+        #to calculate the perp vector from the orientation, we do the cross between orientation adn the z axis 
+        #this vector lies in the plane of the curve towards the circle centre
+
         perp = np.cross(self.orientation, [0, 0, 1])
-        if np.linalg.norm(perp) < 1e-6:
-            perp = np.cross(self.orientation, [0, 1, 0])
+        #normalise perpendicular
         perp /= np.linalg.norm(perp)
+
+
+
+        #the perp vector is now rotated around the needle axis by plane_angle. this will align the bending direction with the agents choice. the final perp
+        #is pointing from the needle position toward the circle centre.
         perp = self._rotate_about_local_z(plane_angle) @ perp
 
+
+        #radius of the circle
         R = 1.0 / kappa
+
+        #bending angle 
         theta = length / R
+
+        #get the axis of rotation, which is perpendicular to the plane formed by the orientation and perp
         axis = np.cross(self.orientation, perp)
+
+        #normalise axis 
+
         axis /= np.linalg.norm(axis)
+
+        #skew symmetric rotation of the form [0 -z y; z 0 -x; -y x 0]. Medical robotics Theory & Applications!! :)
+
+
         K = np.array([[0, -axis[2], axis[1]],
                       [axis[2], 0, -axis[0]],
                       [-axis[1], axis[0], 0]])
+        
+        #get the circle centre
         centre = self.pos + perp * R
 
+
+        #to check for collisions along the arc we will sample 16 points along the arc and check each one. this also helps with visualisation
         thetas = np.linspace(0, theta, 16)[1:]
         points = []
+
+
+        # so above, we divide the bending angle into 16 parts, given by a small t angle, and for each t angle, we get the rotation matrix using the 
+        #rodrigues formula. R_bend = I + sin(t)*k + (1 - cos(t))*k^2
+
+
         for t in thetas:
+    
             Rbend = np.eye(3) + np.sin(t) * K + (1 - np.cos(t)) * (K @ K)
+
+        #to get that point on the arc, get the vector from centre to needle position, rotate by t using Rbend, and then add the rotated vector to the 
+        #centre to get the point coordinates.
+
             pt = centre + Rbend @ (self.pos - centre)
             points.append(pt)
 
+        #do the same rotation for the bending angle to find the final orientation.
         Rbend_f = np.eye(3) + np.sin(theta) * K + (1 - np.cos(theta)) * (K @ K)
+    
+        #rotate initial orientation vector to get the new orientation.
         new_ori = Rbend_f @ self.orientation
+        #normalise
         new_ori /= np.linalg.norm(new_ori)
-
 
         return points, new_ori
 
