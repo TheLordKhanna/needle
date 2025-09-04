@@ -1,38 +1,74 @@
+
+#import necessary libraries 
 import numpy as np 
 import matplotlib.pyplot as plt
 import gymnasium as gym
 from gymnasium import spaces
 
+#define env class needlesteeringenv
 class NeedleSteeringEnv(gym.Env):
 
+    #render mode and speed to see active progression of the needle
     metadata = {"render_modes": ["human"], "render_fps": 30}
 
+
+    #defining all our needed reward parameters
     def __init__(
         self,
         *,
+        #the curvature here is defined as a curvature fraction - I initially attempted to built a variable curvature model with some noise that could 
+        #oscillate between +-15% of the curvature, but wasn't able to. I have left the fraction functionality here so that I can improve future versions. 
+        
         curvature_fraction: float = 1.0,
+
+        #in sphere scaling factor. see below in step.
         alpha: float = 3.0,
-        eta: float = 0.0,
-        zeta: float = 0.0,
+
+        #both eta and zeta need very small values; any significant increase would cause the needle to stop in its tracks and not progress forward at all.
+        eta: float = 0.0005,
+        
+        zeta: float = 0.0005,
+
+        #main motivator for forward movement. Per step reward. although it is large (150), remember that the per step distance reduction is also a 
+        #very small number - mm scale
         distance_weight: float = 150.0,
-        length_cost: float = 20.0,
+
+        #this is currently 0, although it would most probably be a very small number. for future iterations. 
+        length_cost: float = 00,
+
+        #5 mm region of interest around the target for the needle to move towards
         switch_dist: float = 0.005,
+
+        #this was initially included as a method to scale DOWN the values of the in-sphere steps. I took this action as the needle was already
+        #receiving large rewards in the 5 mm region and did not have large enough incentive to hit the exact 3 mm spot. Due to chnages to the reward structure,
+        #this is no longewr relevant, but it is still kept around in case the needle starts stalling at 5 mm again. 
         inside_scale = 1,
+
+        #for curriculum learning- set to True when running TestSAC so that it defaults to max difficulty task ( 3mm)
         evaluation_mode: bool = False,
         render_mode=None,
         seed=None,
     ):
         super().__init__()
+
+        #no set seed. use a random seed.
         self.np_random = np.random.RandomState(seed)
 
-        
+        #maximum cuvrature is 10.44 m-1
         self.max_curvature = 10.44
+
+        #max step length that the needle can move in
         self.max_step_length = 0.005
+
+        #radius of obstacles
         self.collision_rad = 0.005
-        self.min_arc_length = 0.00  
+         
+
+        #actual curvature, if curve fraction was applied. 
+        self.kappa_star = float(np.clip(curvature_fraction, 0, 1)) * self.max_curvature
+
 
         
-        self.kappa_star = float(np.clip(curvature_fraction, 0, 1)) * self.max_curvature
         self.alpha = float(alpha)
         self.eta = float(eta)
         self.zeta = float(zeta)
@@ -267,5 +303,6 @@ class NeedleSteeringEnv(gym.Env):
 
 
         return points, new_ori
+
 
 
