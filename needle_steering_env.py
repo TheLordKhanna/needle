@@ -121,8 +121,8 @@ class NeedleSteeringEnv(gym.Env):
         ]
 
         self.entered_switch_sphere = False
-        self.steering_in_progress = False
-        self.current_arc_length = 0.0
+        
+        
         
         return self._get_obs(), {}
 
@@ -131,21 +131,8 @@ class NeedleSteeringEnv(gym.Env):
         length = float(np.clip(length, 1e-5, self.max_step_length))
         plane = float(np.clip(plane, -np.pi, np.pi))
 
-        # --- LOGIC FOR STICKY STEERING ---
         agent_wants_to_steer = (sf >= 0.5)
 
-        if self.steering_in_progress:
-            steer_flag = 1.0
-            self.current_arc_length += length
-            if self.current_arc_length >= self.min_arc_length:
-                self.steering_in_progress = False
-                self.current_arc_length = 0.0
-        elif agent_wants_to_steer:
-            steer_flag = 1.0
-            self.steering_in_progress = True
-            self.current_arc_length += length
-        else:
-            steer_flag = 0.0
        
         reward = 0.0 * length
         self.path_length += length
@@ -280,4 +267,5 @@ class NeedleSteeringEnv(gym.Env):
 
 
         return points, new_ori
+
 
