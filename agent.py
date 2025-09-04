@@ -1,4 +1,6 @@
 
+#please refer to the explaination given in the dissertation for a detailed breakdown of each operation in this file
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -12,15 +14,23 @@ class SACAgent:
 
         self.device = torch.device(device)
         self.gamma, self.tau = gamma, tau
+
+        #clip gradients
         self.clip_grad = clip_grad
 
+
+        #initialise actor, critic and critic target
         self.actor  = Actor(obs_dim, act_dim).to(self.device)
         self.critic = Critic(obs_dim, act_dim).to(self.device)
         self.critic_tgt = Critic(obs_dim, act_dim).to(self.device)
         self.critic_tgt.load_state_dict(self.critic.state_dict())
 
+
+        #define optimisers for actor, critic. We use Adam as a default, but other optimisers such as RMSprop might be useful
         self.actor_opt  = torch.optim.Adam(self.actor.parameters(),  lr=lr)
         self.critic_opt = torch.optim.Adam(self.critic.parameters(), lr=lr)
+
+                    
         self.log_alpha  = torch.tensor(np.log(0.2), requires_grad=True,
                                        device=self.device)
         self.alpha_opt  = torch.optim.Adam([self.log_alpha], lr=lr)
@@ -55,8 +65,14 @@ class SACAgent:
         with torch.no_grad():
             a2_raw, logp2, _ = self.actor(o2)
             a2 = self._to_env(a2_raw)
+
+            #obtain q1 and q2 critic values from the slow updating target critic applied to the new observation and action
             q1_t, q2_t = self.critic_tgt(o2, a2)
+
+            #obtain the minimum q value - conservative Q learning
             min_q_t = torch.min(q1_t, q2_t) - self.alpha * logp2
+
+            
             backup  = r + (1 - d) * self.gamma * min_q_t
 
         q1, q2 = self.critic(o, a)
@@ -84,3 +100,4 @@ class SACAgent:
             for p, tp in zip(self.critic.parameters(),
                              self.critic_tgt.parameters()):
                 tp.mul_(1 - self.tau).add_(p, alpha=self.tau)
+
