@@ -171,62 +171,98 @@ class NeedleSteeringEnv(gym.Env):
         
         return self._get_obs(), {}
 
+
+    #main step function, taking the action vector and returning reward
     def step(self, action):
         length, sf, plane = action
         length = float(np.clip(length, 1e-5, self.max_step_length))
         plane = float(np.clip(plane, -np.pi, np.pi))
         steer_flag = 1.0 if sf >= 0.5 else 0.0
-        agent_wants_to_steer = (sf >= 0.5)
         
-       
-        reward = 0.0 * length
+        
         self.path_length += length
 
+
+        #key movement function - see below
         points, new_ori = self._move_segment(length, plane,
             self.kappa_star if steer_flag else 0.0)
         
+
+        #get previous distance to target from needle tip for distance reduction reward
         prev_pt = self.pos.copy()
         prev_dist = np.linalg.norm(prev_pt - self.target)
+
+        #success condition is initialised as false 
         success = False
 
+
+        
         for pt in points:
+
+            #current dist at that needle position to the target 
             dist = np.linalg.norm(pt - self.target)
+
+            #main forward movement distance reduction reward - simple 
             reward += self.dist_w * (prev_dist - dist)
 
+
+            # if the needle has entered the 5 mm switch_dist sphere, we are now applying a projection reward, and a striaght movement reward
             if prev_dist <= self.switch_dist:
+
+                # projection reward - comparing the cosine between needle tip project and needle-target vector
                 to_tgt = (self.target - prev_pt)
                 to_tgt /= np.linalg.norm(to_tgt) + 1e-8
                 proj = np.dot(pt - prev_pt, to_tgt)
+
+                #scale by alpha. ignore the inside scale for now as per above
                 reward += (self.alpha * self.inside_scale) * proj
                 
+
+                # straight movement bonus- if the needle is moving straight, give a small bonus 
                 if steer_flag == 0.0 and length > 1e-5:
                     reward += (self.straight_bonus * self.inside_scale) / len(points)
             
+
+            #small reward for entering the switch sphere, one-off
             if not self.entered_switch_sphere and dist < self.switch_dist:
                 reward += 100.0 
                 self.entered_switch_sphere = True
 
+
+            #check for success condition @ 3 mm target radius
             if dist < self.target_radius:
                 success = True
             
             prev_pt, prev_dist = pt.copy(), dist
 
+            #stop repetitve loop if success is reached
             if success:
                 break
 
+
+        #penalise for steering and large changes in bending plane angle
         reward -= self.eta * steer_flag
         reward -= self.zeta * abs(plane - self.prev_plane)
         self.prev_plane = plane
         reward -= self.time_penalty
 
+
+        #main penalty- collision with obstacles. in reality the code can work with only this penalty, 
+        # but I have added the other smaller penalties to guide learning to an extent
         collided = self._is_collision(prev_pt)
         if collided:
             reward -= 50.0
 
+
+        #if success- massive reward. In reality this should be bounded, as with penalties, to prevent exploding gradients, but that si for furture versions.
         if success:
             reward += 20000.0
+
+            #peanlty for total legnth, to encourage shorter paths. 0 currently
             reward -= self.length_cost * self.path_length
             rem = max(self.max_steps - (self.steps + 1), 0)
+
+            #early termination reward
             reward += 100.0 * (rem / self.max_steps)
 
         self.pos, self.orientation = prev_pt, new_ori
@@ -357,6 +393,8 @@ class NeedleSteeringEnv(gym.Env):
         new_ori /= np.linalg.norm(new_ori)
 
         return points, new_ori
+
+
 
 
 
