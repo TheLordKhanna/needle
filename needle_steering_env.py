@@ -68,7 +68,7 @@ class NeedleSteeringEnv(gym.Env):
         self.kappa_star = float(np.clip(curvature_fraction, 0, 1)) * self.max_curvature
 
 
-        
+        #instance attributes of above
         self.alpha = float(alpha)
         self.eta = float(eta)
         self.zeta = float(zeta)
@@ -81,19 +81,26 @@ class NeedleSteeringEnv(gym.Env):
         self.render_mode = render_mode
         self.inside_scale = float(inside_scale)
 
+
+
         self.evaluation_mode = evaluation_mode
         self.episode_counter = 0
+
+        #curriculum steps for training on target radii
         self.curriculum_schedule = [
-            (500, 0.007),  
+            (500, 0.005),  
             (1500, 0.004), 
         ]
 
+
+        #defining action space vector
         self.action_space = spaces.Box(
             low=np.array([0.0, 0.0, -np.pi], dtype=np.float32),
             high=np.array([self.max_step_length, 1.0, np.pi], dtype=np.float32),
             dtype=np.float32,
         )
         
+        #workspace bounds - for render limits and obsveration space
         self.workspace_bounds = {
             'low': np.array([-0.05, 0.0, 0.0], dtype=np.float32),
             'high': np.array([0.2, 0.15, 0.08], dtype=np.float32)
@@ -104,12 +111,14 @@ class NeedleSteeringEnv(gym.Env):
 
         self.reset(seed=seed)
 
+
+    #reset function for new episode
     def reset(self, *, seed=None, options=None):
         if seed is not None:
             self.np_random.seed(seed)
 
         if not self.evaluation_mode:
-            # Training mode: use the curriculum
+            # training, use curriculum 
             self.episode_counter += 1
             
             if self.episode_counter < self.curriculum_schedule[0][0]:
@@ -125,6 +134,7 @@ class NeedleSteeringEnv(gym.Env):
                 print(f"\n--- Episode {self.episode_counter}: Curriculum Change -> Target Radius set to {self.target_radius*1000:.0f}mm ---\n")
         else:
             
+            #eval, use toughest raidus 
             self.target_radius = 0.003
     
         #position, normalissed orientation, target 
@@ -194,6 +204,9 @@ class NeedleSteeringEnv(gym.Env):
 
         #success condition is initialised as false 
         success = False
+
+        #initialise reward value
+        reward = 0.0 
 
 
         
@@ -272,6 +285,9 @@ class NeedleSteeringEnv(gym.Env):
         done = success or collided or (self.steps >= self.max_steps)
         return self.get_obs(), float(reward), done, self.steps >= self.max_steps, {}
 
+
+
+    #render function using matplotlib
     def render(self):
         if self.render_mode != "human": return
         if not hasattr(self, "_fig"):
@@ -297,17 +313,26 @@ class NeedleSteeringEnv(gym.Env):
         ax.legend()
         plt.pause(0.001)
 
+
+    #function to cloe render once its completed 
     def close(self):
         if hasattr(self, "_fig"):
             plt.close(self._fig)
             del self._fig
 
+
+    #to obtain the 9 D obsverational vector
     def get_obs(self):
         return np.concatenate([self.pos, self.orientation, self.target]).astype(np.float32)
 
+
+    #collision check by querying if neelde tip is within collision rad 
     def is_collision(self, point):
         return any(np.linalg.norm(point - o) < self.collision_rad for o in self.obstacles)
 
+
+    #function to rotate a vector about the local z axis by an angle
+    #used in move segment to rotate the perp vector to the circle centre
     def rotate_about_local_z(self, angle):
         z = self.orientation / (np.linalg.norm(self.orientation) + 1e-8)
         Kz = np.array([[0, -z[2], z[1]],
