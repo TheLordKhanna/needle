@@ -1,6 +1,6 @@
 /*
 this is motor control for a single motor. this is not my original work, it is simply
-modified from the dynamixel2arduino library for a XL430 motor.
+modified from the dynamixel2arduino library for six XL430 motor.
 */
 
 #include <Dynamixel2Arduino.h>
