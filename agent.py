@@ -1,5 +1,6 @@
 
 #please refer to the explaination given in the dissertation for a detailed breakdown of each operation in this file
+#forward prop is held in network.py
 
 import numpy as np
 import torch
@@ -87,6 +88,7 @@ class SACAgent:
 
             #obtain the minimum q value - conservative Q learning. subtract the Q by the log prob scaled by alpha. 
             #log prob is for the squashed action u, measures how typical or expected (low surprisal) the sampled action is for the current state
+            #it was defined in network.py during forward propogration
             min_q_t = torch.min(q1_t, q2_t) - self.alpha * logp2
 
             #online critic weights updated with this bellman equation. 
@@ -137,5 +139,6 @@ class SACAgent:
             for p, tp in zip(self.critic.parameters(),
                              self.critic_tgt.parameters()):
                 tp.mul_(1 - self.tau).add_(p, alpha=self.tau)
+
 
 
